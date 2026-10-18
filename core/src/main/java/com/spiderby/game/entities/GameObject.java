@@ -2,9 +2,12 @@ package com.spiderby.game.entities;
 
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 
-/** Shared parent for game entities (abstraction and inheritance). */
+/** Shared parent for game entities. */
 public abstract class GameObject {
-    protected float x, y, width, height;
+    protected float x;
+    protected float y;
+    protected float width;
+    protected float height;
 
     protected GameObject(float x, float y, float width, float height) {
         this.x = x;

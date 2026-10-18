@@ -6,7 +6,7 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 
-/** Handles sprite sheets, walking cycles and idle frames. */
+/** Handles the four directional walking sprite sheets. */
 public class PlayerAnimation {
 
     public enum Direction { UP, DOWN, LEFT, RIGHT }
@@ -15,8 +15,15 @@ public class PlayerAnimation {
     private static final int COLUMNS = 5;
     private static final int ROWS = 5;
 
-    private final Texture upTexture, downTexture, leftTexture, rightTexture;
-    private final Animation<TextureRegion> up, down, left, right;
+    private final Texture upTexture;
+    private final Texture downTexture;
+    private final Texture leftTexture;
+    private final Texture rightTexture;
+
+    private final Animation<TextureRegion> up;
+    private final Animation<TextureRegion> down;
+    private final Animation<TextureRegion> left;
+    private final Animation<TextureRegion> right;
 
     public PlayerAnimation() {
         upTexture = loadTexture("walk_up.png", false);
@@ -32,13 +39,18 @@ public class PlayerAnimation {
 
     private Texture loadTexture(String filename, boolean removeGreen) {
         String path = "character1/" + filename;
+
+        if (!Gdx.files.internal(path).exists()) {
+            throw new IllegalStateException("Missing asset: assets/" + path);
+        }
+
         if (!removeGreen) {
             Texture texture = new Texture(Gdx.files.internal(path));
             texture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
             return texture;
         }
 
-        // Preserve existing fix for green background on the down-facing sheet.
+        // Keeps the existing green-background removal for walk_down.png.
         Pixmap source = new Pixmap(Gdx.files.internal(path));
         Pixmap result = new Pixmap(source.getWidth(), source.getHeight(), Pixmap.Format.RGBA8888);
         result.setBlending(Pixmap.Blending.None);
@@ -50,15 +62,18 @@ public class PlayerAnimation {
                 int g = (pixel >>> 16) & 255;
                 int b = (pixel >>> 8) & 255;
                 int a = pixel & 255;
+
                 boolean green = Math.abs(r - 70) < 12
                         && Math.abs(g - 112) < 12
                         && Math.abs(b - 77) < 12;
+
                 result.drawPixel(x, y, green || a == 0 ? 0x00000000 : pixel);
             }
         }
 
         Texture texture = new Texture(result);
         texture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+
         source.dispose();
         result.dispose();
         return texture;
@@ -67,29 +82,48 @@ public class PlayerAnimation {
     private Animation<TextureRegion> makeAnimation(Texture sheet, int count) {
         int frameWidth = sheet.getWidth() / COLUMNS;
         int frameHeight = sheet.getHeight() / ROWS;
+
         TextureRegion[] frames = new TextureRegion[count];
+
         for (int i = 0; i < count; i++) {
-            frames[i] = new TextureRegion(sheet,
+            frames[i] = new TextureRegion(
+                    sheet,
                     (i % COLUMNS) * frameWidth,
                     (i / COLUMNS) * frameHeight,
-                    frameWidth, frameHeight);
+                    frameWidth,
+                    frameHeight
+            );
         }
-        return new Animation<TextureRegion>(FRAME_TIME, frames);
+
+        return new Animation<>(FRAME_TIME, frames);
     }
 
     public TextureRegion getFrame(Direction direction, float time, boolean moving) {
-        Animation<TextureRegion> chosen;
+        Animation<TextureRegion> selected;
+
         switch (direction) {
-            case UP: chosen = up; break;
-            case LEFT: chosen = left; break;
-            case RIGHT: chosen = right; break;
+            case UP:
+                selected = up;
+                break;
+            case LEFT:
+                selected = left;
+                break;
+            case RIGHT:
+                selected = right;
+                break;
             case DOWN:
-            default: chosen = down; break;
+            default:
+                selected = down;
+                break;
         }
-        if (moving) return chosen.getKeyFrame(time, true);
-        TextureRegion[] frames = chosen.getKeyFrames();
-        int idle = direction == Direction.RIGHT ? 3 : 4;
-        return frames[Math.min(idle, frames.length - 1)];
+
+        if (moving) {
+            return selected.getKeyFrame(time, true);
+        }
+
+        TextureRegion[] frames = selected.getKeyFrames();
+        int idleIndex = direction == Direction.RIGHT ? 3 : 4;
+        return frames[Math.min(idleIndex, frames.length - 1)];
     }
 
     public void dispose() {
